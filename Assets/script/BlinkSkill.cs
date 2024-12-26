@@ -15,7 +15,7 @@ public class BlinkSkill : MonoBehaviour
 
     private void Blink()
     {
-        Vector3 blinkDirection = transform.localScale.x > 0 ? Vector3.right : Vector3.left; // ทิศทางการ Blink
+        Vector3 blinkDirection = transform.localScale.x < 0 ? Vector3.right : Vector3.left; // ทิศทางการ Blink
         Vector3 targetPosition = transform.position + blinkDirection * blinkDistance;
 
         // ตรวจสอบว่ามีสิ่งกีดขวางหรือไม่

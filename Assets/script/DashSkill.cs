@@ -29,10 +29,10 @@ public class DashSkill : MonoBehaviour
         // ตรวจจับทิศทางจากปุ่มลูกศร
         dashDirection = Vector2.zero;
 
-        if (Input.GetKey(KeyCode.UpArrow)) dashDirection += Vector2.up; // บน
-        if (Input.GetKey(KeyCode.DownArrow)) dashDirection += Vector2.down; // ล่าง
-        if (Input.GetKey(KeyCode.LeftArrow)) dashDirection += Vector2.left; // ซ้าย
-        if (Input.GetKey(KeyCode.RightArrow)) dashDirection += Vector2.right; // ขวา
+        if (Input.GetKey(KeyCode.W)) dashDirection += Vector2.up; // บน
+        if (Input.GetKey(KeyCode.S)) dashDirection += Vector2.down; // ล่าง
+        if (Input.GetKey(KeyCode.A)) dashDirection += Vector2.left; // ซ้าย
+        if (Input.GetKey(KeyCode.D)) dashDirection += Vector2.right; // ขวา
 
         // หากมีการกดทิศทาง และกดปุ่ม Dash (เช่น F)
         if (dashDirection != Vector2.zero && Input.GetKeyDown(KeyCode.F))

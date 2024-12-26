@@ -37,17 +37,6 @@ public class mover : MonoBehaviour
     void Update()
     {
       movee();
-  if(blinkCooldownTimer > 0)
-        {
-            blinkCooldownTimer -= Time.deltaTime;
-
-        }
-      if (Input.GetKeyDown(KeyCode.C) && blinkCooldownTimer <= 0)
-      {
-        StartCoroutine(Blinkanime());
-
-
-      }
     }
 
 
@@ -75,47 +64,34 @@ public class mover : MonoBehaviour
         }
     }
 
-
-
-
-    public void Blink()
-    {
-    
-        float direction = transform.localScale.x < 0 ? 1 : -1;
-        transform.position += new Vector3(blinkdistance * direction, 0, 0);
-        blinkCooldownTimer = blinkCooldown;
-       
-
-
-    }
-
-IEnumerator Blinkanime()
-{
-    anime.SetTrigger("blink");
-    yield return new WaitForSeconds(0.5f);
-    Blink();
-
-}
-
-
     public void jumppp()
+{
+    // ลดตัวจับเวลาคูลดาวน์
+    if (jumpCooldownTimer > 0)
     {
-         if(jumpCooldownTimer > 0)
-        {
-            jumpCooldownTimer -= Time.deltaTime;
-
-        }
-
-        if(Input.GetKeyDown(KeyCode.Space) && jumpCooldownTimer <= 0 && jumpCount < maxJump)
-
-        {
-             myRigid.velocity = Vector2.up * Jumpp;
-             jumpCount = jumpCount + 1;
-             jumpCooldownTimer = jumpCooldown;
-
-        }
+        jumpCooldownTimer -= Time.deltaTime;
     }
 
+    // กระโดดเมื่อกดปุ่ม Space และยังมีจำนวนกระโดดเหลืออยู่
+    if (Input.GetKeyDown(KeyCode.Space) && jumpCooldownTimer <= 0 && jumpCount < maxJump)
+    {
+        myRigid.velocity = new Vector2(myRigid.velocity.x, Jumpp); // กระโดด
+        jumpCount++; // เพิ่มจำนวนครั้งที่กระโดด
+        jumpCooldownTimer = jumpCooldown; // ตั้งคูลดาวน์ใหม่
+    }
+
+    // ปรับฟิสิกส์ขณะตกหรือปล่อยปุ่มกระโดด
+    if (myRigid.velocity.y < 0)
+    {
+        // ตกเร็วขึ้นด้วย Fall Multiplier
+        myRigid.velocity += Vector2.up * Physics2D.gravity.y * (2.5f - 1) * Time.deltaTime;
+    }
+    else if (myRigid.velocity.y > 0 && !Input.GetKey(KeyCode.Space))
+    {
+        // ตกเร็วขึ้นเล็กน้อยเมื่อปล่อยปุ่มกระโดด
+        myRigid.velocity += Vector2.up * Physics2D.gravity.y * (2f - 1) * Time.deltaTime;
+    }
+}
     public void OnCollisionEnter2D(Collision2D collisionInfo)
 
     {

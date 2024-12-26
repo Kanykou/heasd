@@ -13,10 +13,56 @@ public class SkillSelection : MonoBehaviour
     private float originalPitch = 1f; // ค่า Pitch ปกติ
     private bool isSelectingSkill = false; // สถานะกำลังเลือกสกิล
     private bool isResettingTime = false; // สถานะกำลังคืนค่าเวลา
-     public Dictionary<string, MonoBehaviour> skillMap;
-
-
+    public Dictionary<string, MonoBehaviour> skillMap; // Mapping ระหว่างชื่อสกิลและสคริปต์
     public MonoBehaviour playerMoverScript; // สคริปต์ควบคุมการเคลื่อนที่ของ Player
+
+    void Start()
+{
+    // กำหนดค่าเริ่มต้นให้ SkillMap
+    skillMap = new Dictionary<string, MonoBehaviour>();
+
+    // ดึง Component สกิล
+    MonoBehaviour dashSkill = GetComponent<DashSkill>();
+    MonoBehaviour blinkSkill = GetComponent<BlinkSkill>();
+    MonoBehaviour wallSkill = GetComponent<WallSlideAndJumpSkill>();
+
+    // เพิ่ม Component ลงใน SkillMap ถ้ามีอยู่
+    if (dashSkill != null)
+    {
+        skillMap.Add("Dash", dashSkill);
+        Debug.Log("DashSkill added to SkillMap.");
+    }
+    else
+    {
+        Debug.LogWarning("DashSkill component is missing!");
+    }
+
+    if (blinkSkill != null)
+    {
+        skillMap.Add("Blink", blinkSkill);
+        Debug.Log("BlinkSkill added to SkillMap.");
+    }
+    else
+    {
+        Debug.LogWarning("BlinkSkill component is missing!");
+    }
+
+    if (wallSkill != null)
+    {
+        skillMap.Add("WallSlideAndJumpSkill", wallSkill);
+        Debug.Log("WallSlideAndJumpSkill added to SkillMap.");
+    }
+    else
+    {
+        Debug.LogWarning("WallSlideAndJumpSkill component is missing!");
+    }
+
+    // ตรวจสอบว่า SkillMap มีสกิลอย่างน้อย 1 สกิล
+    if (skillMap.Count == 0)
+    {
+        Debug.LogError("SkillMap is empty. Please add skill components to the GameObject.");
+    }
+}
 
     void Update()
     {
@@ -25,13 +71,13 @@ public class SkillSelection : MonoBehaviour
         {
             isResettingTime = false; // หยุดคืนค่าเวลา
             SlowMotion(); // เรียกใช้ฟังก์ชัน Slow Motion
-            if (!isSelectingSkill && Time.timeScale <= slowMotionTarget + 0.05f) // เมื่อเวลาช้าพอแล้ว
+            if (!isSelectingSkill && Time.unscaledTime >= slowMotionTarget) // ใช้เวลาแบบไม่หน่วง
             {
                 ActivateSkillSelection();
             }
         }
 
-        // ปล่อย R เพื่อเริ่มคืนค่าเวลา
+        // ปล่อย R เพื่อยืนยันการเลือก
         if (Input.GetKeyUp(KeyCode.R))
         {
             ConfirmSkillSelection(); // ยืนยันสกิลที่เลือกจาก Skill Wheel
@@ -41,18 +87,18 @@ public class SkillSelection : MonoBehaviour
         // คืนค่าเวลาเมื่อกำลัง Reset
         if (isResettingTime)
         {
-            ResetTime(); // เรียกฟังก์ชันคืนเวลาใน Update
+            ResetTime();
         }
     }
 
-    // ฟังก์ชัน Slow Motion
+    // ฟังก์ชัน Slow Motion (ลดเวลาแบบไม่ขึ้นกับ Time.timeScale)
     void SlowMotion()
     {
-        Time.timeScale = Mathf.Lerp(Time.timeScale, slowMotionTarget, timeLerpSpeed * Time.unscaledDeltaTime); // ลด Time Scale
-        backgroundMusic.pitch = Mathf.Lerp(backgroundMusic.pitch, musicPitchSlow, timeLerpSpeed * Time.unscaledDeltaTime); // ลด Pitch
+        Time.timeScale = Mathf.Lerp(Time.timeScale, slowMotionTarget, timeLerpSpeed * Time.unscaledDeltaTime);
+        backgroundMusic.pitch = Mathf.Lerp(backgroundMusic.pitch, musicPitchSlow, timeLerpSpeed * Time.unscaledDeltaTime);
     }
 
-    // ฟังก์ชัน Reset Time
+    // ฟังก์ชัน Reset Time (คืนค่าเวลาแบบไม่ขึ้นกับ Time.timeScale)
     void ResetTime()
     {
         Time.timeScale = Mathf.MoveTowards(Time.timeScale, originalTimeScale, timeLerpSpeed * Time.unscaledDeltaTime);
@@ -65,36 +111,21 @@ public class SkillSelection : MonoBehaviour
             isResettingTime = false;
         }
     }
-    void Start()
-{
-    if (skillMap == null || skillMap.Count == 0)
-    {
-        Debug.LogError("skillMap is null or empty. Please initialize it in Start.");
-
-    }
-    skillMap = new Dictionary<string, MonoBehaviour>
-    {
-        { "Dash", GetComponent<DashSkill>() },    // เชื่อม DashSkill
-        { "Blink", GetComponent<BlinkSkill>() },  // เชื่อม BlinkSkill
-        { "WallSlideAndJumpSkill", GetComponent<WallSlideAndJumpSkill>() }   // เชื่อม HoverSkill
-    };
-}
-
 
     void ActivateSkillSelection()
-{
-    if (skillWheelUI == null || skillWheelController == null || playerMoverScript == null)
     {
-        Debug.LogError("ActivateSkillSelection: Missing references. Please check skillWheelUI, skillWheelController, and playerMoverScript.");
-        return;
-    }
+        if (skillWheelUI == null || skillWheelController == null || playerMoverScript == null)
+        {
+            Debug.LogError("ActivateSkillSelection: Missing references. Please check skillWheelUI, skillWheelController, and playerMoverScript.");
+            return;
+        }
 
-    isSelectingSkill = true;
-    skillWheelUI.SetActive(true);
-    skillWheelController.ResetSkillSelection();
-    Cursor.visible = true;
-    playerMoverScript.enabled = false;
-}
+        isSelectingSkill = true;
+        skillWheelUI.SetActive(true);
+        skillWheelController.ResetSkillSelection();
+        Cursor.visible = true;
+        playerMoverScript.enabled = false;
+    }
 
     void ConfirmSkillSelection()
     {
@@ -106,10 +137,10 @@ public class SkillSelection : MonoBehaviour
         // ปิดโหมดเลือกสกิล
         skillWheelUI.SetActive(false);
         isSelectingSkill = false;
-         playerMoverScript.enabled = true;
+        playerMoverScript.enabled = true;
     }
 
- public void ApplySkillToPlayer(string skillName)
+    public void ApplySkillToPlayer(string skillName)
     {
         if (skillMap == null || skillMap.Count == 0)
         {
