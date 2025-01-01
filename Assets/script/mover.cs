@@ -1,106 +1,122 @@
-using System;
 using System.Collections;
 using System.Collections.Generic;
-using Unity.Mathematics;
-using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
-public class mover : MonoBehaviour
+public class Mover : MonoBehaviour
 {
     private float moveH;
-    Rigidbody2D myRigid;
+    private Rigidbody2D myRigid;
 
     public float speed = 3f;
-    public float Jumpp = 2f;
-   public float jumpCooldown = 1f;
-     private float jumpCooldownTimer = 0f;
-     public float shiftSpeed = 5f;
-     public float blinkdistance = 1f;
-     public float blinkCooldown = 1f;
-     private float blinkCooldownTimer = 0f;
-     private int jumpCount = 0;
-     public int maxJump = 2;
-     public Animator anime;
+    public float jumpForce = 2f;
+    public int maxJump = 2; // จำนวนครั้งที่กระโดดได้ (เช่น Double Jump)
+    public float wallJumpForce = 5f; // แรงกระโดดออกจากกำแพง
+    public Vector2 wallJumpDirection = new Vector2(1, 1); // ทิศทางการกระโดดจากกำแพง
+    public LayerMask groundLayer; // เลเยอร์ของพื้น
+    public LayerMask wallLayer; // เลเยอร์ของกำแพง
+    private int jumpCount = 0;
+    private bool isGrounded = false;
+    private bool isTouchingWall = false;
+    public float wallCheckDistance = 0.5f; // ระยะตรวจจับกำแพง
+    public Animator anime;
 
-
-
-
-
-
-    // Start is called before the first frame update
     void Start()
     {
-         myRigid = GetComponent<Rigidbody2D>();
+        myRigid = GetComponent<Rigidbody2D>();
+        wallJumpDirection.Normalize(); // ทำให้ทิศทางการกระโดดเป็นหน่วย (1)
     }
 
-    // Update is called once per frame
     void Update()
     {
-      movee();
+        movee();
     }
-
-
 
     public void movee()
     {
         jumppp();
-        float CurrentSpeed = speed;
-        if(Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) 
+
+        // การเคลื่อนที่แนวนอน
+        float currentSpeed = speed;
+        if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
         {
-            CurrentSpeed = shiftSpeed;
+            currentSpeed *= 1.5f; // เพิ่มความเร็วเมื่อกด Shift
         }
-        moveH = Input.GetAxis("Horizontal")  * CurrentSpeed ;
+
+        moveH = Input.GetAxis("Horizontal") * currentSpeed;
         myRigid.velocity = new Vector2(moveH, myRigid.velocity.y);
         anime.SetFloat("Speed", Mathf.Abs(moveH));
-        
 
-        if(moveH < 0)
+        // ปรับทิศทางตัวละคร
+        if (moveH < 0)
         {
-            transform.localScale = new Vector3(Mathf.Abs(transform.localScale.x), transform.localScale.y, transform.localScale.z);
+            transform.localScale = new Vector3(-Mathf.Abs(transform.localScale.x), transform.localScale.y, transform.localScale.z);
         }
         else if (moveH > 0)
         {
-            transform.localScale = new Vector3(-Mathf.Abs(transform.localScale.x), transform.localScale.y, transform.localScale.z);
+            transform.localScale = new Vector3(Mathf.Abs(transform.localScale.x), transform.localScale.y, transform.localScale.z);
         }
     }
 
     public void jumppp()
-{
-    // ลดตัวจับเวลาคูลดาวน์
-    if (jumpCooldownTimer > 0)
     {
-        jumpCooldownTimer -= Time.deltaTime;
-    }
+        // ตรวจสอบสถานะสัมผัสพื้นและกำแพง
+        isGrounded = CheckGround();
+        isTouchingWall = CheckWall();
 
-    // กระโดดเมื่อกดปุ่ม Space และยังมีจำนวนกระโดดเหลืออยู่
-    if (Input.GetKeyDown(KeyCode.Space) && jumpCooldownTimer <= 0 && jumpCount < maxJump)
-    {
-        myRigid.velocity = new Vector2(myRigid.velocity.x, Jumpp); // กระโดด
-        jumpCount++; // เพิ่มจำนวนครั้งที่กระโดด
-        jumpCooldownTimer = jumpCooldown; // ตั้งคูลดาวน์ใหม่
-    }
-
-    // ปรับฟิสิกส์ขณะตกหรือปล่อยปุ่มกระโดด
-    if (myRigid.velocity.y < 0)
-    {
-        // ตกเร็วขึ้นด้วย Fall Multiplier
-        myRigid.velocity += Vector2.up * Physics2D.gravity.y * (2.5f - 1) * Time.deltaTime;
-    }
-    else if (myRigid.velocity.y > 0 && !Input.GetKey(KeyCode.Space))
-    {
-        // ตกเร็วขึ้นเล็กน้อยเมื่อปล่อยปุ่มกระโดด
-        myRigid.velocity += Vector2.up * Physics2D.gravity.y * (2f - 1) * Time.deltaTime;
-    }
-}
-    public void OnCollisionEnter2D(Collision2D collisionInfo)
-
-    {
-        if(collisionInfo.gameObject.tag==("ground"))
+        // รีเซ็ตการกระโดดเมื่อสัมผัสพื้น
+        if (isGrounded)
         {
+            Debug.Log("โดนพื้นแล้ว");
             jumpCount = 0;
-
         }
 
+        // กระโดดจากกำแพง
+        if (isTouchingWall && Input.GetKeyDown(KeyCode.Space) && !isGrounded)
+        {
+            WallJump();
+        }
+        // กระโดดปกติ
+        else if (Input.GetKeyDown(KeyCode.Space) && jumpCount < maxJump)
+        {
+            myRigid.velocity = new Vector2(myRigid.velocity.x, jumpForce);
+            jumpCount++;
+        }
+    }
+
+    private void WallJump()
+    {
+        Vector2 jumpDir = new Vector2(-transform.localScale.x * wallJumpDirection.x, wallJumpDirection.y);
+        myRigid.velocity = Vector2.zero; // รีเซ็ตความเร็วปัจจุบัน
+        myRigid.AddForce(jumpDir * wallJumpForce, ForceMode2D.Impulse);
+        jumpCount++; // เพิ่มจำนวนกระโดด
+    }
+
+    private bool CheckGround()
+    {
+        // ใช้ Raycast ตรวจสอบว่าตัวละครสัมผัสพื้นหรือไม่
+        RaycastHit2D hit = Physics2D.Raycast(transform.position, Vector2.down, 2f, groundLayer);
+        Debug.DrawRay(transform.position, Vector2.down * 0.1f, Color.green);
+        return hit.collider != null;
+    }
+
+    private bool CheckWall()
+    {
+        // ใช้ Raycast ตรวจสอบว่าตัวละครสัมผัสกำแพงหรือไม่
+        Vector2 direction = transform.localScale.x > 0 ? Vector2.right : Vector2.left;
+        RaycastHit2D hit = Physics2D.Raycast(transform.position, direction, wallCheckDistance, wallLayer);
+        Debug.DrawRay(transform.position, direction * wallCheckDistance, Color.red);
+        return hit.collider != null;
+    }
+
+    private void OnDrawGizmos()
+    {
+        // วาด Raycast สำหรับตรวจพื้น
+        Gizmos.color = isGrounded ? Color.green : Color.red; // สีเขียวเมื่อสัมผัสพื้น, สีแดงเมื่อไม่สัมผัส
+        Gizmos.DrawLine(transform.position, transform.position + Vector3.down * 0.1f);
+
+        // วาด Raycast สำหรับตรวจจับกำแพง
+        Gizmos.color = isTouchingWall ? Color.blue : Color.yellow; // สีน้ำเงินเมื่อสัมผัสกำแพง, สีเหลืองเมื่อไม่สัมผัส
+        Vector3 wallDirection = transform.localScale.x > 0 ? Vector3.right : Vector3.left;
+        Gizmos.DrawLine(transform.position, transform.position + wallDirection * wallCheckDistance);
     }
 }
-
